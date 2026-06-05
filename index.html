@@ -978,7 +978,7 @@ function getDailyPuzzle(dayIndex, profile) {
     const allUnder50 = nums.every(n => n <= 50);
     const allPositive = nums.every(n => n > 0);
     const unique = new Set(nums).size === 9;
-    if (allUnder50 && allPositive && unique && hasMinGap(nums, 3)) {
+    if (allUnder50 && allPositive && unique && (p.multiplier < 3 || hasMinGap(nums, 3))) {
       chosenOffset = off;
       break;
     }
@@ -1004,7 +1004,7 @@ function getDailyPuzzle(dayIndex, profile) {
       uniqueCount: new Set(numbers).size === 9,
       allPositive:  numbers.every(n => n > 0),
       allUnder50:   numbers.every(n => n <= 50),
-      minGap:       d === 0 ? true : hasMinGap(numbers, 3),
+      minGap:       multiplier >= 3 ? hasMinGap(numbers, 3) : true,
       sumCorrect:   targetSum === expectedSum,
       sumInRange:   d === 0 ? targetSum === 15 :
                     (targetSum >= 15*p.multiplier + 3*p.offsetMin &&
