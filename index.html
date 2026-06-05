@@ -1,0 +1,2008 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CIPHER — Daily Magic Square</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #F7F5F0;
+  --surface: #FFFFFF;
+  --text-primary: #1A1A1A;
+  --text-secondary: #6B6B6B;
+  --correct: #4CAF7D;
+  --incorrect: #E05A5A;
+  --locked: #F0A500;
+  --accent: #1A1A2E;
+  --easy: #4CAF7D;
+  --medium: #F0A500;
+  --hard: #E05A5A;
+  --border: #E0DDD6;
+  --cell-size: 80px;
+  --tile-size: 72px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1A1A1A;
+    --surface: #2A2A2A;
+    --text-primary: #F0EDE6;
+    --text-secondary: #9B9B9B;
+    --border: #3A3A3A;
+    --accent: #E8E4DC;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--bg);
+  color: var(--text-primary);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0 16px 40px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ── Header ── */
+header {
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 0 12px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 16px;
+}
+
+.header-left { display: flex; flex-direction: column; }
+
+h1 {
+  font-family: 'DM Serif Display', serif;
+  font-size: 26px;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+}
+
+.header-date {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+.header-right { display: flex; align-items: center; gap: 10px; }
+
+.badge {
+  font-size: 13px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 20px;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+}
+
+.badge.easy { color: var(--easy); border-color: var(--easy); }
+.badge.medium { color: var(--medium); border-color: var(--medium); }
+.badge.hard { color: var(--hard); border-color: var(--hard); }
+
+.streak-badge {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 20px;
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  transition: background 0.15s;
+}
+.streak-badge:hover { background: var(--border); }
+
+.stats-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-secondary);
+  padding: 4px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  font-size: 18px;
+  transition: color 0.15s;
+}
+.stats-btn:hover { color: var(--text-primary); }
+.stats-btn:focus-visible { outline: 2px solid var(--accent); }
+
+/* ── Status message ── */
+#status-msg {
+  height: 24px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  text-align: center;
+  margin-bottom: 8px;
+  transition: opacity 0.2s;
+}
+
+/* ── Grid ── */
+#grid-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin-bottom: 20px;
+}
+
+.grid-row { display: flex; }
+
+.grid-cell {
+  width: var(--cell-size);
+  height: var(--cell-size);
+  border: 1.5px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'DM Serif Display', serif;
+  font-size: 26px;
+  color: var(--text-primary);
+  background: var(--surface);
+  position: relative;
+  cursor: default;
+  transition: background 0.15s, border-color 0.2s;
+  user-select: none;
+}
+
+/* collapse double borders */
+.grid-cell:not(:first-child) { margin-left: -1.5px; }
+.grid-row:not(:first-child) .grid-cell { margin-top: -1.5px; }
+
+.grid-cell.empty-placeholder::after {
+  content: '';
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  border: 2px dashed var(--border);
+}
+
+.grid-cell.drag-over {
+  background: #e8f5ee;
+  border-color: var(--correct);
+}
+
+@media (prefers-color-scheme: dark) {
+  .grid-cell.drag-over { background: #1e3a2a; }
+}
+
+.grid-cell.correct-line {
+  background: #e8f5ee;
+  border-color: var(--correct);
+}
+@media (prefers-color-scheme: dark) {
+  .grid-cell.correct-line { background: #1e3a2a; }
+}
+
+.grid-cell.incorrect-line {
+  background: #fdeaea;
+  border-color: var(--incorrect);
+}
+@media (prefers-color-scheme: dark) {
+  .grid-cell.incorrect-line { background: #3a1e1e; }
+}
+
+.grid-cell.locked {
+  border-color: var(--locked);
+  background: #fff8e6;
+}
+@media (prefers-color-scheme: dark) {
+  .grid-cell.locked { background: #3a2e10; }
+}
+
+.lock-icon {
+  position: absolute;
+  top: 4px; right: 5px;
+  font-size: 10px;
+  opacity: 0.7;
+}
+
+.grid-cell:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; z-index: 1; }
+
+/* ── Number tray ── */
+#tray-wrapper {
+  display: grid;
+  grid-template-columns: repeat(3, var(--tile-size));
+  gap: 8px;
+  margin-bottom: 24px;
+}
+
+.tile {
+  width: var(--tile-size);
+  height: var(--tile-size);
+  border-radius: 12px;
+  border: 2px solid var(--border);
+  background: var(--surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'DM Serif Display', serif;
+  font-size: 26px;
+  color: var(--text-primary);
+  cursor: grab;
+  transition: transform 0.12s, box-shadow 0.12s, opacity 0.15s;
+  user-select: none;
+  touch-action: none;
+}
+
+.tile:active { cursor: grabbing; }
+
+.tile.dragging {
+  opacity: 0.4;
+  transform: scale(0.95);
+}
+
+.tile.ghost {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.tile:focus-visible { outline: 2px solid var(--accent); }
+
+/* ── Controls ── */
+#controls {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+  max-width: 420px;
+  justify-content: center;
+}
+
+.btn {
+  flex: 1;
+  max-width: 140px;
+  padding: 14px 0;
+  border-radius: 12px;
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  color: var(--text-primary);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+}
+
+.btn:hover { background: var(--border); }
+.btn:active { transform: scale(0.97); }
+.btn:focus-visible { outline: 2px solid var(--accent); }
+
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+.btn-primary:hover { opacity: 0.88; background: var(--accent); }
+
+/* ── Hint bottom sheet ── */
+#hint-sheet {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  background: var(--surface);
+  border-top: 1.5px solid var(--border);
+  border-radius: 20px 20px 0 0;
+  padding: 24px 24px 40px;
+  transform: translateY(100%);
+  transition: transform 0.3s ease;
+  z-index: 100;
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+#hint-sheet.open { transform: translateY(0); }
+
+.sheet-handle {
+  width: 40px; height: 4px;
+  border-radius: 2px;
+  background: var(--border);
+  margin: 0 auto 20px;
+}
+
+.hint-title {
+  font-family: 'DM Serif Display', serif;
+  font-size: 20px;
+  margin-bottom: 8px;
+}
+
+.hint-desc {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+
+.hint-actions { display: flex; gap: 10px; }
+
+#sheet-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.35);
+  z-index: 99;
+}
+#sheet-overlay.open { display: block; }
+
+/* ── Solved overlay ── */
+#solved-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  z-index: 200;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+#solved-overlay.open { display: flex; }
+
+.solved-card {
+  background: var(--surface);
+  border-radius: 20px;
+  padding: 32px 28px;
+  max-width: 380px;
+  width: 100%;
+  text-align: center;
+  animation: slideUp 0.35s ease;
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.solved-check {
+  font-size: 48px;
+  margin-bottom: 8px;
+}
+
+.solved-title {
+  font-family: 'DM Serif Display', serif;
+  font-size: 30px;
+  margin-bottom: 4px;
+}
+
+.solved-cipher {
+  font-size: 15px;
+  color: var(--text-secondary);
+  margin-bottom: 20px;
+}
+
+.solved-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 20px;
+  text-align: left;
+}
+
+.stat-item { background: var(--bg); border-radius: 10px; padding: 12px; }
+.stat-label { font-size: 11px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+.stat-value { font-family: 'DM Serif Display', serif; font-size: 20px; }
+
+.community-line {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+
+.share-btn {
+  width: 100%;
+  padding: 14px;
+  border-radius: 12px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-bottom: 10px;
+  transition: opacity 0.15s;
+}
+.share-btn:hover { opacity: 0.88; }
+
+.close-solved-btn {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 8px;
+  font-family: 'DM Sans', sans-serif;
+}
+
+/* ── Stats screen ── */
+#stats-screen {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: var(--bg);
+  z-index: 300;
+  overflow-y: auto;
+  padding: 24px 20px 60px;
+}
+#stats-screen.open { display: block; }
+
+.stats-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+
+.stats-title {
+  font-family: 'DM Serif Display', serif;
+  font-size: 24px;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 22px;
+  cursor: pointer;
+  color: var(--text-secondary);
+  padding: 4px;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 28px;
+  max-width: 420px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.stats-card {
+  background: var(--surface);
+  border-radius: 14px;
+  padding: 16px;
+  border: 1.5px solid var(--border);
+}
+
+.stats-card .label { font-size: 11px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+.stats-card .value { font-family: 'DM Serif Display', serif; font-size: 28px; }
+.stats-card .sub { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+
+.section-title {
+  font-family: 'DM Serif Display', serif;
+  font-size: 17px;
+  margin-bottom: 12px;
+  max-width: 420px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.bar-chart {
+  max-width: 420px;
+  margin: 0 auto 28px;
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  height: 80px;
+}
+
+.bar-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  height: 100%;
+}
+
+.bar-fill {
+  width: 100%;
+  background: var(--accent);
+  border-radius: 4px 4px 0 0;
+  min-height: 4px;
+  opacity: 0.75;
+}
+.bar-fill.no-data { background: var(--border); opacity: 1; }
+
+.bar-label { font-size: 9px; color: var(--text-secondary); margin-top: 4px; text-align: center; }
+
+.hint-breakdown {
+  max-width: 420px;
+  margin: 0 auto 28px;
+  background: var(--surface);
+  border-radius: 14px;
+  border: 1.5px solid var(--border);
+  overflow: hidden;
+}
+
+.hint-row {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+  gap: 10px;
+}
+.hint-row:last-child { border-bottom: none; }
+
+.hint-row-bar {
+  flex: 1;
+  height: 8px;
+  background: var(--bg);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.hint-row-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 4px;
+  opacity: 0.6;
+}
+.hint-row-pct { font-size: 12px; color: var(--text-secondary); min-width: 32px; text-align: right; }
+
+/* ── How to play modal ── */
+#howto-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  z-index: 400;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+#howto-overlay.open { display: flex; }
+
+.howto-card {
+  background: var(--surface);
+  border-radius: 20px;
+  padding: 36px 28px 28px;
+  max-width: 360px;
+  width: 100%;
+  text-align: center;
+  animation: slideUp 0.3s ease;
+}
+
+.howto-title {
+  font-family: 'DM Serif Display', serif;
+  font-size: 26px;
+  margin-bottom: 24px;
+}
+
+.howto-step {
+  display: flex;
+  align-items: flex-start;
+  text-align: left;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.step-icon {
+  font-size: 22px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.step-text { font-size: 15px; line-height: 1.5; color: var(--text-secondary); }
+.step-text strong { color: var(--text-primary); }
+
+.howto-btn {
+  margin-top: 24px;
+  width: 100%;
+  padding: 14px;
+  border-radius: 12px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.howto-btn:hover { opacity: 0.88; }
+
+/* ── Drag ghost ── */
+#drag-ghost {
+  position: fixed;
+  pointer-events: none;
+  z-index: 999;
+  width: var(--tile-size);
+  height: var(--tile-size);
+  border-radius: 12px;
+  background: var(--surface);
+  border: 2px solid var(--accent);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  font-family: 'DM Serif Display', serif;
+  font-size: 26px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+  transform: translate(-50%, -50%);
+}
+
+/* ── Pulse animation for solved ── */
+@keyframes pulseSolve {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.08); }
+  100% { transform: scale(1); }
+}
+
+.pulse-solve { animation: pulseSolve 0.4s ease; }
+
+/* ── Copied toast ── */
+#toast {
+  position: fixed;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: var(--accent);
+  color: #fff;
+  padding: 10px 20px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 500;
+  opacity: 0;
+  transition: opacity 0.2s, transform 0.2s;
+  pointer-events: none;
+  z-index: 500;
+  white-space: nowrap;
+}
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ── Mobile tweaks ── */
+@media (max-width: 400px) {
+  :root { --cell-size: 72px; --tile-size: 68px; }
+  h1 { font-size: 22px; }
+}
+
+@media (min-width: 500px) {
+  :root { --cell-size: 90px; --tile-size: 80px; }
+}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<header>
+  <div class="header-left">
+    <h1>CIPHER</h1>
+    <div class="header-date" id="header-date"></div>
+  </div>
+  <div class="header-right">
+    <span class="badge" id="diff-badge"></span>
+    <span class="streak-badge" id="streak-badge" title="Current streak"></span>
+    <button class="stats-btn" id="open-stats-btn" aria-label="View stats">📊</button>
+  </div>
+</header>
+
+<div id="status-msg" aria-live="polite"></div>
+
+<!-- 3×3 Grid -->
+<div id="grid-wrapper" role="grid" aria-label="Magic square grid"></div>
+
+<!-- Number tray -->
+<div id="tray-wrapper" aria-label="Number tiles"></div>
+
+<!-- Controls -->
+<div id="controls">
+  <button class="btn btn-primary" id="check-btn">Check</button>
+  <button class="btn" id="reset-btn">Reset</button>
+  <button class="btn" id="hint-btn">Hint (3)</button>
+</div>
+
+<!-- Drag ghost (mobile) -->
+<div id="drag-ghost"></div>
+
+<!-- Sheet overlay -->
+<div id="sheet-overlay"></div>
+
+<!-- Hint bottom sheet -->
+<div id="hint-sheet" role="dialog" aria-modal="true" aria-label="Hint">
+  <div class="sheet-handle"></div>
+  <div class="hint-title" id="hint-sheet-title"></div>
+  <div class="hint-desc" id="hint-sheet-desc"></div>
+  <div class="hint-actions">
+    <button class="btn btn-primary" id="hint-confirm-btn">Reveal</button>
+    <button class="btn" id="hint-cancel-btn">Cancel</button>
+  </div>
+</div>
+
+<!-- Solved overlay -->
+<div id="solved-overlay" role="dialog" aria-modal="true" aria-label="Puzzle solved">
+  <div class="solved-card">
+    <div class="solved-check">✓</div>
+    <div class="solved-title">Solved!</div>
+    <div class="solved-cipher" id="solved-cipher"></div>
+    <div class="solved-stats">
+      <div class="stat-item"><div class="stat-label">Time</div><div class="stat-value" id="stat-time"></div></div>
+      <div class="stat-item"><div class="stat-label">Hints</div><div class="stat-value" id="stat-hints"></div></div>
+      <div class="stat-item"><div class="stat-label">Difficulty</div><div class="stat-value" id="stat-diff"></div></div>
+      <div class="stat-item"><div class="stat-label">Streak</div><div class="stat-value" id="stat-streak"></div></div>
+    </div>
+    <div class="community-line" id="community-line"></div>
+    <button class="share-btn" id="share-btn">Copy Result</button>
+    <button class="close-solved-btn" id="close-solved-btn">Close</button>
+  </div>
+</div>
+
+<!-- Stats screen -->
+<div id="stats-screen" role="dialog" aria-modal="true" aria-label="Your statistics">
+  <div class="stats-header">
+    <div class="stats-title">Your Stats</div>
+    <button class="close-btn" id="close-stats-btn" aria-label="Close stats">✕</button>
+  </div>
+  <div class="stats-grid" id="stats-grid"></div>
+  <div class="section-title" style="max-width:420px;margin:0 auto 12px;">Solve times — last 14 days</div>
+  <div class="bar-chart" id="bar-chart"></div>
+  <div class="section-title" style="max-width:420px;margin:0 auto 12px;">Hint usage</div>
+  <div class="hint-breakdown" id="hint-breakdown"></div>
+</div>
+
+<!-- How to play modal -->
+<div id="howto-overlay" role="dialog" aria-modal="true" aria-label="How to play">
+  <div class="howto-card">
+    <div class="howto-title">How to play CIPHER</div>
+    <div class="howto-step">
+      <span class="step-icon">🔢</span>
+      <div class="step-text"><strong>Drag</strong> the 9 numbers into the 3×3 grid</div>
+    </div>
+    <div class="howto-step">
+      <span class="step-icon">➕</span>
+      <div class="step-text">Every <strong>row, column, and diagonal</strong> must sum to the same number</div>
+    </div>
+    <div class="howto-step">
+      <span class="step-icon">🔍</span>
+      <div class="step-text">You figure out <strong>what that number is</strong> — it's not given to you</div>
+    </div>
+    <div class="howto-step">
+      <span class="step-icon">💡</span>
+      <div class="step-text">Tap <strong>Check</strong> to see which lines are correct. Up to 3 hints available.</div>
+    </div>
+    <button class="howto-btn" id="howto-btn">Got it →</button>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+//  PUZZLE GENERATION
+// ═══════════════════════════════════════════════════════
+
+const BASE = [2,7,6, 9,5,1, 4,3,8]; // classic 3×3 magic square, sum=15
+
+// 8 symmetries of a 3×3 grid (index permutations of a flat 9-element array)
+const ROTATIONS = (() => {
+  // treat array as grid[row][col], row-major
+  function idx(r,c){ return r*3+c; }
+  function buildPerm(mapFn){
+    const p=[];
+    for(let r=0;r<3;r++) for(let c=0;c<3;c++) p.push(idx(...mapFn(r,c)));
+    return p;
+  }
+  return [
+    buildPerm((r,c)=>[r,c]),           // R0 identity
+    buildPerm((r,c)=>[2-c,r]),         // R1 rotate 90°
+    buildPerm((r,c)=>[2-r,2-c]),       // R2 rotate 180°
+    buildPerm((r,c)=>[c,2-r]),         // R3 rotate 270°
+    buildPerm((r,c)=>[r,2-c]),         // R4 mirror horizontal
+    buildPerm((r,c)=>[2-r,c]),         // R5 mirror vertical
+    buildPerm((r,c)=>[c,r]),           // R6 transpose
+    buildPerm((r,c)=>[2-c,2-r]),       // R7 anti-transpose
+  ];
+})();
+
+function applyRotation(grid, r) {
+  const perm = ROTATIONS[r % 8];
+  return perm.map(i => grid[i]);
+}
+
+function applyTransform(grid, multiplier, offset) {
+  return grid.map(v => v * multiplier + offset);
+}
+
+// Seeded PRNG (Mulberry32) — deterministic per dayIndex
+function mulberry32(seed) {
+  return function() {
+    seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+    let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+function seededShuffle(arr, seed) {
+  const a = arr.slice();
+  const rand = mulberry32(seed);
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+// Difficulty tiers per spec
+const DIFFICULTY_PARAMS = {
+  easy:   { multiplier: 1, offsetMin: 1,  offsetMax: 10 },
+  medium: { multiplier: 2, offsetMin: 1,  offsetMax: 15 },
+  hard:   { multiplier: 3, offsetMin: 10, offsetMax: 20 },
+};
+
+function getDifficulty(dayIndex, profile) {
+  // Adaptive adjustments
+  const adj = getAdaptiveAdjustment(profile);
+  const effectiveDay = dayIndex + adj;
+
+  if (effectiveDay < 7)  return 'easy';
+  if (effectiveDay < 21) {
+    if (effectiveDay < 14) return seededRand(dayIndex, 0) < 0.70 ? 'easy' : 'medium';
+    return seededRand(dayIndex, 0) < 0.40 ? 'easy' : 'medium';
+  }
+  if (effectiveDay < 60) {
+    // Phase 3: weekday-based using dayIndex mod 7
+    // Mondays (dayIndex%7===0) occasionally easy
+    const dow = dayIndex % 7;
+    if (dow === 0 && seededRand(dayIndex, 1) < 0.35) return 'easy';
+    if (dow === 4) return 'hard'; // Friday
+    return 'medium';
+  }
+  // Phase 4: full random
+  const r = seededRand(dayIndex, 2);
+  if (r < 0.25) return 'easy';
+  if (r < 0.65) return 'medium';
+  return 'hard';
+}
+
+function getAdaptiveAdjustment(profile) {
+  if (!profile || !profile.recentPerformance || profile.recentPerformance.length < 7) return 0;
+  const recent = profile.recentPerformance.slice(-7);
+  const solveRate = recent.filter(p => p.solved).length / recent.length;
+  const avgHints  = recent.reduce((s, p) => s + p.hintsUsed, 0) / recent.length;
+  const dayIndex  = profile.dayIndex || 0;
+
+  // Never serve hard in first 14 days regardless
+  if (dayIndex < 14) return 0;
+
+  if (solveRate > 0.90 && avgHints < 0.5) return 7;   // advance 7 days early
+  if (solveRate < 0.40 || avgHints > 2.0) return -7;  // stay 7 days longer
+  return 0;
+}
+
+function seededRand(day, salt) {
+  const rand = mulberry32(day * 1000 + salt);
+  return rand();
+}
+
+function pickTransform(dayIndex, difficulty) {
+  const p = DIFFICULTY_PARAMS[difficulty];
+  const rand = mulberry32(dayIndex * 31 + 7);
+  const offsetRange = p.offsetMax - p.offsetMin + 1;
+  const offset = p.offsetMin + Math.floor(rand() * offsetRange);
+  return { multiplier: p.multiplier, offset };
+}
+
+function hasMinGap(numbers, minGap = 3) {
+  const sorted = numbers.slice().sort((a, b) => a - b);
+  for (let i = 1; i < sorted.length; i++) {
+    if (sorted[i] - sorted[i-1] < minGap) return false;
+  }
+  return true;
+}
+
+function getDailyPuzzle(dayIndex, profile) {
+  const difficulty = getDifficulty(dayIndex, profile);
+
+  // Day 0 only: pure single-digit magic square (1–9, sum=15) as intro
+  if (dayIndex === 0) {
+    const numbers = seededShuffle(BASE.slice(), 3);
+    return { numbers, targetSum: 15, difficulty: 'easy', multiplier: 1, offset: 0 };
+  }
+
+  const p = DIFFICULTY_PARAMS[difficulty];
+  const rotation = dayIndex % 8;
+
+  // Try offsets in seeded-random order until constraints satisfied
+  const rand = mulberry32(dayIndex * 97 + 13);
+  const offsetRange = p.offsetMax - p.offsetMin + 1;
+  const offsets = Array.from({length: offsetRange}, (_,i) => p.offsetMin + i);
+
+  // shuffle offset candidates
+  for (let i = offsets.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    [offsets[i], offsets[j]] = [offsets[j], offsets[i]];
+  }
+
+  let chosenOffset = offsets[0]; // fallback
+  for (const off of offsets) {
+    const nums = applyTransform(applyRotation(BASE, rotation), p.multiplier, off);
+    const allUnder50 = nums.every(n => n <= 50);
+    const allPositive = nums.every(n => n > 0);
+    const unique = new Set(nums).size === 9;
+    if (allUnder50 && allPositive && unique && hasMinGap(nums, 3)) {
+      chosenOffset = off;
+      break;
+    }
+  }
+
+  const baseNumbers = applyTransform(applyRotation(BASE, rotation), p.multiplier, chosenOffset);
+  const targetSum = 15 * p.multiplier + 3 * chosenOffset;
+  const numbers = seededShuffle(baseNumbers, dayIndex * 19 + 3);
+
+  return { numbers, targetSum, difficulty, multiplier: p.multiplier, offset: chosenOffset };
+}
+
+// ─── Console verification: Days 1–70 ───
+(function verifyPuzzles() {
+  console.group('CIPHER — Puzzle Verification: Days 0–69');
+  const issues = [];
+
+  for (let d = 0; d < 70; d++) {
+    const { numbers, targetSum, difficulty, multiplier, offset } = getDailyPuzzle(d, null);
+    const sorted = numbers.slice().sort((a,b)=>a-b);
+
+    const p = DIFFICULTY_PARAMS[difficulty];
+    const expectedSum = 15 * multiplier + 3 * offset;
+
+    const checks = {
+      uniqueCount: new Set(numbers).size === 9,
+      allPositive:  numbers.every(n => n > 0),
+      allUnder50:   numbers.every(n => n <= 50),
+      // Day 0 uses 1–9 (gap=1 intentional); gap≥3 enforced from Day 1
+      minGap:       d === 0 ? true : hasMinGap(numbers, 3),
+      sumCorrect:   targetSum === expectedSum,
+      sumInRange:   d === 0 ? targetSum === 15 :
+                    (targetSum >= 15*p.multiplier + 3*p.offsetMin &&
+                     targetSum <= 15*p.multiplier + 3*p.offsetMax),
+    };
+
+    if (d < 7 && difficulty !== 'easy') {
+      checks.easyOnboarding = false;
+      issues.push(`Day ${d}: expected Easy, got ${difficulty}`);
+    }
+
+    const pass = Object.values(checks).every(Boolean);
+    if (!pass) {
+      issues.push(`Day ${d} FAIL: ${JSON.stringify(checks)}`);
+    }
+
+    console.log(
+      `Day ${String(d).padStart(2)} | ${difficulty.padEnd(6)} | m=${multiplier} off=${String(offset).padStart(2)} | ` +
+      `[${numbers.join(',')}] | cipher=${targetSum} | ${pass ? '✓' : '✗ FAIL'}`
+    );
+  }
+
+  if (issues.length === 0) {
+    console.log('\n✓ All 70 days pass. Puzzle generation verified.');
+  } else {
+    console.error('\n✗ Issues found:', issues);
+  }
+  console.groupEnd();
+})();
+
+// ═══════════════════════════════════════════════════════
+//  PERSISTENCE
+// ═══════════════════════════════════════════════════════
+
+const STORE = {
+  get(key, def) {
+    try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : def; }
+    catch { return def; }
+  },
+  set(key, val) {
+    try { localStorage.setItem(key, JSON.stringify(val)); } catch {}
+  }
+};
+
+function todayStr() {
+  return new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+}
+
+function loadProfile() {
+  return STORE.get('cipher_profile', {
+    firstPlayDate: null,
+    dayIndex: 0,
+    streak: 0,
+    longestStreak: 0,
+    lastPlayedDate: null,
+    totalPlayed: 0,
+    totalSolved: 0,
+    cleanSolves: 0,
+    recentPerformance: [],
+  });
+}
+
+function saveProfile(p) { STORE.set('cipher_profile', p); }
+
+function loadToday() {
+  const t = STORE.get('cipher_today', null);
+  if (t && t.date === todayStr()) return t;
+  return null;
+}
+
+function saveToday(t) { STORE.set('cipher_today', t); }
+
+function loadHistory() { return STORE.get('cipher_history', []); }
+function saveHistory(h) { STORE.set('cipher_history', h); }
+
+// ─── Day index: days since first play ───
+function getCurrentDayIndex(profile) {
+  if (!profile.firstPlayDate) return 0;
+  const first = new Date(profile.firstPlayDate);
+  const now   = new Date(todayStr());
+  return Math.floor((now - first) / 86400000);
+}
+
+// ─── Streak logic ───
+function updateStreak(profile) {
+  const today = todayStr();
+  if (profile.lastPlayedDate === today) return profile; // already counted
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yStr = yesterday.toISOString().slice(0, 10);
+  if (profile.lastPlayedDate === yStr) {
+    profile.streak++;
+  } else if (profile.lastPlayedDate !== today) {
+    profile.streak = 1;
+  }
+  profile.longestStreak = Math.max(profile.streak, profile.longestStreak);
+  profile.lastPlayedDate = today;
+  return profile;
+}
+
+// ═══════════════════════════════════════════════════════
+//  GAME STATE
+// ═══════════════════════════════════════════════════════
+
+let profile = loadProfile();
+let dayIndex;
+let puzzle;
+let today;
+let grid = Array(9).fill(null);       // cell values
+let lockedCells = Array(9).fill(false); // hint-locked
+let trayNums = [];                     // current tile values in tray slots
+let dragging = null;                   // { source: 'tray'|'grid', index: number }
+let timerInterval = null;
+let solved = false;
+
+function init() {
+  // First play setup
+  if (!profile.firstPlayDate) {
+    profile.firstPlayDate = todayStr();
+    saveProfile(profile);
+  }
+
+  dayIndex = getCurrentDayIndex(profile);
+  puzzle   = getDailyPuzzle(dayIndex, profile);
+
+  // Load or create today's session
+  today = loadToday();
+  if (!today) {
+    today = {
+      date: todayStr(),
+      gridState: Array(9).fill(null),
+      hintsUsed: 0,
+      hintData: { sum: null, lockedCell: null, lockedRow: null },
+      checkAttempts: 0,
+      startTime: Date.now(),
+      solved: false,
+    };
+    saveToday(today);
+    // update streak and profile on new day
+    profile = updateStreak(profile);
+    profile.totalPlayed++;
+    profile.dayIndex = dayIndex;
+    saveProfile(profile);
+  }
+
+  grid       = today.gridState.slice();
+  lockedCells = Array(9).fill(false);
+
+  // Restore locked cells from hints
+  if (today.hintData.lockedCell !== null) lockedCells[today.hintData.lockedCell] = true;
+  if (today.hintData.lockedRow  !== null) {
+    [0,1,2].forEach(c => lockedCells[today.hintData.lockedRow * 3 + c] = true);
+  }
+
+  solved = today.solved;
+
+  // Build tray: numbers not yet placed in grid
+  const placed = new Set(grid.filter(v => v !== null));
+  trayNums = puzzle.numbers.map(n => placed.has(n) ? null : n);
+  // If a number is placed multiple times (shouldn't happen) tray gets first unaccounted
+  // Recalculate properly
+  const gridCounts = {};
+  grid.forEach(v => { if (v !== null) gridCounts[v] = (gridCounts[v]||0) + 1; });
+  const needed = {};
+  puzzle.numbers.forEach(n => { needed[n] = (needed[n]||0) + 1; });
+  const leftover = [];
+  for (const [n, cnt] of Object.entries(needed)) {
+    const placed = gridCounts[n] || 0;
+    for (let i = 0; i < cnt - placed; i++) leftover.push(Number(n));
+  }
+  // fill tray with leftovers preserving original order
+  let li = 0;
+  trayNums = puzzle.numbers.map(n => {
+    if ((gridCounts[n]||0) > 0) { gridCounts[n]--; return null; }
+    return n;
+  });
+
+  renderHeader();
+  renderGrid();
+  renderTray();
+  if (!solved) startTimer();
+  else showSolvedIfNeeded();
+  updateHintBtn();
+
+  // Show how-to on first ever visit
+  if (!STORE.get('cipher_howto_seen', false)) {
+    document.getElementById('howto-overlay').classList.add('open');
+  }
+
+  // If already solved today, show overlay again
+  if (solved) {
+    setTimeout(() => showSolvedOverlay(), 300);
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+//  RENDER
+// ═══════════════════════════════════════════════════════
+
+function renderHeader() {
+  const dateEl = document.getElementById('header-date');
+  const now = new Date();
+  dateEl.textContent = now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+
+  const badge = document.getElementById('diff-badge');
+  const labels = { easy: '⚡ Easy', medium: '🔥 Medium', hard: '💀 Hard' };
+  badge.textContent = labels[puzzle.difficulty];
+  badge.className = 'badge ' + puzzle.difficulty;
+
+  document.getElementById('streak-badge').textContent = `🔥 ${profile.streak}`;
+}
+
+function renderGrid() {
+  const wrapper = document.getElementById('grid-wrapper');
+  wrapper.innerHTML = '';
+  for (let r = 0; r < 3; r++) {
+    const row = document.createElement('div');
+    row.className = 'grid-row';
+    row.setAttribute('role', 'row');
+    for (let c = 0; c < 3; c++) {
+      const i = r * 3 + c;
+      const cell = document.createElement('div');
+      cell.className = 'grid-cell';
+      cell.setAttribute('role', 'gridcell');
+      cell.setAttribute('tabindex', '0');
+      cell.dataset.index = i;
+
+      const val = grid[i];
+      if (val !== null) {
+        cell.textContent = val;
+        cell.setAttribute('aria-label', `Row ${r+1}, Column ${c+1}: ${val}`);
+        if (lockedCells[i]) {
+          cell.classList.add('locked');
+          const lock = document.createElement('span');
+          lock.className = 'lock-icon';
+          lock.textContent = '🔒';
+          lock.setAttribute('aria-hidden', 'true');
+          cell.appendChild(lock);
+        }
+      } else {
+        cell.classList.add('empty-placeholder');
+        cell.setAttribute('aria-label', `Row ${r+1}, Column ${c+1}: empty`);
+      }
+
+      if (!solved) {
+        cell.addEventListener('dragover', onCellDragOver);
+        cell.addEventListener('dragleave', onCellDragLeave);
+        cell.addEventListener('drop', onCellDrop);
+        cell.addEventListener('dragstart', onCellDragStart);
+        if (val !== null && !lockedCells[i]) cell.setAttribute('draggable', 'true');
+        cell.addEventListener('keydown', onCellKeydown);
+      }
+      row.appendChild(cell);
+    }
+    wrapper.appendChild(row);
+  }
+}
+
+function renderTray() {
+  const wrapper = document.getElementById('tray-wrapper');
+  wrapper.innerHTML = '';
+  trayNums.forEach((n, i) => {
+    const tile = document.createElement('div');
+    tile.className = 'tile';
+    tile.dataset.trayIndex = i;
+    if (n === null) {
+      tile.classList.add('ghost');
+      tile.setAttribute('aria-hidden', 'true');
+    } else {
+      tile.textContent = n;
+      tile.setAttribute('tabindex', '0');
+      tile.setAttribute('aria-label', `Number ${n}`);
+      if (!solved) {
+        tile.setAttribute('draggable', 'true');
+        tile.addEventListener('dragstart', onTileDragStart);
+        tile.addEventListener('keydown', onTileKeydown);
+      }
+    }
+    wrapper.appendChild(tile);
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+//  DRAG & DROP — DESKTOP
+// ═══════════════════════════════════════════════════════
+
+let dragData = null; // { source:'tray'|'grid', trayIndex?, gridIndex?, value }
+
+function onTileDragStart(e) {
+  const tile = e.currentTarget;
+  const ti = parseInt(tile.dataset.trayIndex);
+  dragData = { source: 'tray', trayIndex: ti, value: trayNums[ti] };
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', String(trayNums[ti]));
+  tile.classList.add('dragging');
+  e.currentTarget.addEventListener('dragend', () => tile.classList.remove('dragging'), { once: true });
+}
+
+function onCellDragStart(e) {
+  const cell = e.currentTarget;
+  const gi = parseInt(cell.dataset.index);
+  if (lockedCells[gi]) { e.preventDefault(); return; }
+  dragData = { source: 'grid', gridIndex: gi, value: grid[gi] };
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', String(grid[gi]));
+  e.currentTarget.addEventListener('dragend', () => {}, { once: true });
+}
+
+function onCellDragOver(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  e.currentTarget.classList.add('drag-over');
+}
+
+function onCellDragLeave(e) {
+  e.currentTarget.classList.remove('drag-over');
+}
+
+function onCellDrop(e) {
+  e.preventDefault();
+  const cell = e.currentTarget;
+  cell.classList.remove('drag-over');
+  const targetIdx = parseInt(cell.dataset.index);
+  if (lockedCells[targetIdx]) return;
+  if (!dragData) return;
+
+  const val = dragData.value;
+
+  if (dragData.source === 'tray') {
+    // Place from tray into grid
+    const displaced = grid[targetIdx]; // might be null
+    grid[targetIdx] = val;
+    trayNums[dragData.trayIndex] = displaced; // put back displaced or null
+  } else {
+    // Grid → Grid swap
+    const fromIdx = dragData.gridIndex;
+    if (lockedCells[fromIdx]) return;
+    const displaced = grid[targetIdx];
+    grid[targetIdx] = val;
+    grid[fromIdx] = displaced;
+  }
+
+  dragData = null;
+  persistGridState();
+  renderGrid();
+  renderTray();
+  clearLineFeedback();
+}
+
+// Allow dropping back to tray
+function setupTrayDropTarget() {
+  const wrapper = document.getElementById('tray-wrapper');
+  wrapper.addEventListener('dragover', e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; });
+  wrapper.addEventListener('drop', e => {
+    e.preventDefault();
+    if (!dragData || dragData.source !== 'grid') return;
+    const fromIdx = dragData.gridIndex;
+    if (lockedCells[fromIdx]) return;
+    // Find first empty tray slot
+    const emptySlot = trayNums.findIndex(n => n === null);
+    if (emptySlot === -1) return; // shouldn't happen
+    trayNums[emptySlot] = grid[fromIdx];
+    grid[fromIdx] = null;
+    dragData = null;
+    persistGridState();
+    renderGrid();
+    renderTray();
+    clearLineFeedback();
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+//  TOUCH DRAG — MOBILE
+// ═══════════════════════════════════════════════════════
+
+let touchDrag = null;
+const ghost = document.getElementById('drag-ghost');
+
+function setupTouchDrag() {
+  document.addEventListener('touchstart', onTouchStart, { passive: false });
+  document.addEventListener('touchmove',  onTouchMove,  { passive: false });
+  document.addEventListener('touchend',   onTouchEnd,   { passive: false });
+}
+
+function onTouchStart(e) {
+  if (solved) return;
+  const target = e.target.closest('.tile, .grid-cell');
+  if (!target) return;
+
+  let source, value, fromTrayIdx = null, fromGridIdx = null;
+
+  if (target.classList.contains('tile') && !target.classList.contains('ghost')) {
+    fromTrayIdx = parseInt(target.dataset.trayIndex);
+    value = trayNums[fromTrayIdx];
+    if (value === null) return;
+    source = 'tray';
+  } else if (target.classList.contains('grid-cell') && target.textContent.trim()) {
+    fromGridIdx = parseInt(target.dataset.index);
+    if (lockedCells[fromGridIdx]) return;
+    value = grid[fromGridIdx];
+    source = 'grid';
+  } else { return; }
+
+  e.preventDefault();
+  const t = e.touches[0];
+
+  ghost.textContent = value;
+  ghost.style.display = 'flex';
+  ghost.style.left = t.clientX + 'px';
+  ghost.style.top  = t.clientY + 'px';
+
+  target.classList.add('dragging');
+  touchDrag = { source, value, fromTrayIdx, fromGridIdx, originEl: target };
+}
+
+function onTouchMove(e) {
+  if (!touchDrag) return;
+  e.preventDefault();
+  const t = e.touches[0];
+  ghost.style.left = t.clientX + 'px';
+  ghost.style.top  = t.clientY + 'px';
+
+  // Highlight cell under touch
+  document.querySelectorAll('.grid-cell').forEach(c => c.classList.remove('drag-over'));
+  const el = document.elementFromPoint(t.clientX, t.clientY);
+  const cell = el && el.closest('.grid-cell');
+  if (cell) cell.classList.add('drag-over');
+}
+
+function onTouchEnd(e) {
+  if (!touchDrag) return;
+  ghost.style.display = 'none';
+  touchDrag.originEl.classList.remove('dragging');
+  document.querySelectorAll('.grid-cell').forEach(c => c.classList.remove('drag-over'));
+
+  const t = e.changedTouches[0];
+  const el = document.elementFromPoint(t.clientX, t.clientY);
+  const dropCell = el && el.closest('.grid-cell');
+  const dropTile = el && el.closest('#tray-wrapper');
+
+  if (dropCell) {
+    const targetIdx = parseInt(dropCell.dataset.index);
+    if (!lockedCells[targetIdx]) {
+      if (touchDrag.source === 'tray') {
+        const displaced = grid[targetIdx];
+        grid[targetIdx] = touchDrag.value;
+        trayNums[touchDrag.fromTrayIdx] = displaced;
+      } else {
+        const fromIdx = touchDrag.fromGridIdx;
+        if (!lockedCells[fromIdx]) {
+          const displaced = grid[targetIdx];
+          grid[targetIdx] = touchDrag.value;
+          grid[fromIdx] = displaced;
+        }
+      }
+      persistGridState();
+      renderGrid();
+      renderTray();
+      clearLineFeedback();
+    }
+  } else if (dropTile && touchDrag.source === 'grid') {
+    const fromIdx = touchDrag.fromGridIdx;
+    if (!lockedCells[fromIdx]) {
+      const emptySlot = trayNums.findIndex(n => n === null);
+      if (emptySlot !== -1) {
+        trayNums[emptySlot] = grid[fromIdx];
+        grid[fromIdx] = null;
+        persistGridState();
+        renderGrid();
+        renderTray();
+        clearLineFeedback();
+      }
+    }
+  }
+  touchDrag = null;
+}
+
+// ═══════════════════════════════════════════════════════
+//  KEYBOARD ACCESSIBILITY
+// ═══════════════════════════════════════════════════════
+
+let kbSelected = null; // { source: 'tray'|'grid', index }
+
+function onTileKeydown(e) {
+  if (solved) return;
+  if (e.key === 'Enter' || e.key === ' ') {
+    e.preventDefault();
+    const ti = parseInt(e.currentTarget.dataset.trayIndex);
+    kbSelected = { source: 'tray', index: ti };
+    setStatus(`Selected ${trayNums[ti]}. Tab to a grid cell and press Enter to place.`);
+  }
+}
+
+function onCellKeydown(e) {
+  if (solved) return;
+  const ci = parseInt(e.currentTarget.dataset.index);
+  if (e.key === 'Enter' || e.key === ' ') {
+    e.preventDefault();
+    if (kbSelected) {
+      // Place selected tile into this cell
+      if (lockedCells[ci]) { setStatus('That cell is locked.'); return; }
+      if (kbSelected.source === 'tray') {
+        const displaced = grid[ci];
+        grid[ci] = trayNums[kbSelected.index];
+        trayNums[kbSelected.index] = displaced;
+      } else {
+        const fromIdx = kbSelected.index;
+        if (lockedCells[fromIdx]) { setStatus('That cell is locked.'); return; }
+        const displaced = grid[ci];
+        grid[ci] = grid[fromIdx];
+        grid[fromIdx] = displaced;
+      }
+      kbSelected = null;
+      persistGridState();
+      renderGrid();
+      renderTray();
+      clearLineFeedback();
+      setStatus('');
+    } else if (grid[ci] !== null && !lockedCells[ci]) {
+      kbSelected = { source: 'grid', index: ci };
+      setStatus(`Selected ${grid[ci]}. Tab to another cell and press Enter to swap, or Tab to tray area.`);
+    }
+  } else if (e.key === 'Escape') {
+    kbSelected = null;
+    setStatus('');
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+//  CHECK LOGIC
+// ═══════════════════════════════════════════════════════
+
+function getLines() {
+  // returns array of 8 line definitions [{cells:[i,i,i], type}]
+  return [
+    { cells:[0,1,2], type:'row' },
+    { cells:[3,4,5], type:'row' },
+    { cells:[6,7,8], type:'row' },
+    { cells:[0,3,6], type:'col' },
+    { cells:[1,4,7], type:'col' },
+    { cells:[2,5,8], type:'col' },
+    { cells:[0,4,8], type:'diag' },
+    { cells:[2,4,6], type:'diag' },
+  ];
+}
+
+function checkGrid() {
+  const complete = grid.every(v => v !== null);
+  if (!complete) {
+    setStatus('Fill all 9 cells first.');
+    return;
+  }
+
+  today.checkAttempts++;
+  saveToday(today);
+
+  const target = puzzle.targetSum;
+  const lines = getLines();
+  let correct = 0;
+
+  clearLineFeedback();
+
+  // Animate lines sequentially
+  lines.forEach((line, li) => {
+    setTimeout(() => {
+      const sum = line.cells.reduce((s, i) => s + grid[i], 0);
+      const ok  = sum === target;
+      if (ok) correct++;
+      line.cells.forEach(i => {
+        const el = document.querySelector(`.grid-cell[data-index="${i}"]`);
+        if (el) {
+          el.classList.add(ok ? 'correct-line' : 'incorrect-line');
+        }
+      });
+
+      if (li === lines.length - 1) {
+        // All lines evaluated
+        if (correct === 8) {
+          triggerSolved();
+        } else {
+          setStatus(`${correct} of 8 lines correct — keep going`);
+        }
+      }
+    }, li * 80);
+  });
+}
+
+function clearLineFeedback() {
+  document.querySelectorAll('.grid-cell').forEach(c => {
+    c.classList.remove('correct-line', 'incorrect-line');
+  });
+  setStatus('');
+}
+
+// ═══════════════════════════════════════════════════════
+//  HINT SYSTEM
+// ═══════════════════════════════════════════════════════
+
+function updateHintBtn() {
+  const rem = 3 - today.hintsUsed;
+  const btn = document.getElementById('hint-btn');
+  btn.textContent = `Hint (${rem})`;
+  btn.disabled = rem <= 0 || solved;
+}
+
+function openHintSheet() {
+  if (solved || today.hintsUsed >= 3) return;
+  const next = today.hintsUsed + 1;
+  const titles = [
+    'Hint 1 of 3 — Reveal the target sum?',
+    'Hint 2 of 3 — Lock one number into its correct cell?',
+    'Hint 3 of 3 — Reveal one complete correct row?',
+  ];
+  const descs = [
+    'The sum every row, column, and diagonal must reach. This will mark your solve as "hinted".',
+    'One number will be placed and locked into its correct position.',
+    'One complete row will be revealed and locked in place.',
+  ];
+  document.getElementById('hint-sheet-title').textContent = titles[next - 1];
+  document.getElementById('hint-sheet-desc').textContent  = descs[next - 1];
+  document.getElementById('hint-sheet').classList.add('open');
+  document.getElementById('sheet-overlay').classList.add('open');
+  document.getElementById('hint-confirm-btn').focus();
+}
+
+function closeHintSheet() {
+  document.getElementById('hint-sheet').classList.remove('open');
+  document.getElementById('sheet-overlay').classList.remove('open');
+}
+
+function applyHint() {
+  closeHintSheet();
+  const hintNum = today.hintsUsed + 1;
+  today.hintsUsed = hintNum;
+
+  if (hintNum === 1) {
+    today.hintData.sum = puzzle.targetSum;
+    setStatus(`The target sum (the Cipher) is ${puzzle.targetSum}.`);
+  } else if (hintNum === 2) {
+    applyHint2();
+  } else if (hintNum === 3) {
+    applyHint3();
+  }
+
+  saveToday(today);
+  updateHintBtn();
+  renderGrid();
+  renderTray();
+}
+
+function applyHint2() {
+  const rotation = dayIndex % 8;
+  const p = DIFFICULTY_PARAMS[puzzle.difficulty];
+  const canonGrid = applyTransform(applyRotation(BASE, rotation), p.multiplier, puzzle.offset);
+  // canonGrid[i] = what belongs in grid position i
+
+  // Find a non-locked, non-correctly-placed cell
+  let chosen = -1;
+  for (let i = 0; i < 9; i++) {
+    if (!lockedCells[i] && grid[i] !== canonGrid[i]) {
+      chosen = i;
+      break;
+    }
+  }
+  if (chosen === -1) {
+    // All non-locked cells are correct — pick any non-locked
+    for (let i = 0; i < 9; i++) {
+      if (!lockedCells[i]) { chosen = i; break; }
+    }
+  }
+  if (chosen === -1) return;
+
+  const correctVal = canonGrid[chosen];
+  // Remove correctVal from wherever it is (grid or tray) and place it
+  // Remove from grid if present elsewhere
+  for (let i = 0; i < 9; i++) {
+    if (i !== chosen && grid[i] === correctVal) {
+      // displaced value goes back to tray
+      const slot = trayNums.findIndex(n => n === null);
+      if (slot !== -1) trayNums[slot] = grid[i];
+      grid[i] = null;
+      break;
+    }
+  }
+  // Remove from tray if present
+  const ti = trayNums.indexOf(correctVal);
+  if (ti !== -1) trayNums[ti] = null;
+  // Put displaced cell value back to tray if cell wasn't empty
+  if (grid[chosen] !== null && grid[chosen] !== correctVal) {
+    const slot = trayNums.findIndex(n => n === null);
+    if (slot !== -1) trayNums[slot] = grid[chosen];
+  }
+
+  grid[chosen] = correctVal;
+  lockedCells[chosen] = true;
+  today.hintData.lockedCell = chosen;
+  persistGridState();
+}
+
+function applyHint3() {
+  const rotation = dayIndex % 8;
+  const p = DIFFICULTY_PARAMS[puzzle.difficulty];
+  const canonGrid = applyTransform(applyRotation(BASE, rotation), p.multiplier, puzzle.offset);
+
+  let bestRow = 0;
+  let bestScore = 999;
+  for (let r = 0; r < 3; r++) {
+    const locked = [0,1,2].filter(c => lockedCells[r*3+c]).length;
+    if (locked < bestScore) { bestScore = locked; bestRow = r; }
+  }
+
+  for (let c = 0; c < 3; c++) {
+    const i = bestRow * 3 + c;
+    if (lockedCells[i]) continue;
+    const correctVal = canonGrid[i];
+    // Clear from grid/tray
+    for (let j = 0; j < 9; j++) {
+      if (j !== i && grid[j] === correctVal) {
+        const slot = trayNums.findIndex(n => n === null);
+        if (slot !== -1) trayNums[slot] = grid[j];
+        grid[j] = null;
+      }
+    }
+    const ti = trayNums.indexOf(correctVal);
+    if (ti !== -1) trayNums[ti] = null;
+    if (grid[i] !== null && grid[i] !== correctVal) {
+      const slot = trayNums.findIndex(n => n === null);
+      if (slot !== -1) trayNums[slot] = grid[i];
+    }
+    grid[i] = correctVal;
+    lockedCells[i] = true;
+  }
+  today.hintData.lockedRow = bestRow;
+  persistGridState();
+}
+
+// ═══════════════════════════════════════════════════════
+//  SOLVED STATE
+// ═══════════════════════════════════════════════════════
+
+function triggerSolved() {
+  if (solved) return;
+  solved = true;
+  today.solved = true;
+  saveToday(today);
+
+  // Update profile
+  profile.totalSolved++;
+  if (today.hintsUsed === 0) profile.cleanSolves++;
+  profile.recentPerformance.push({
+    solved: true,
+    hintsUsed: today.hintsUsed,
+    date: todayStr(),
+  });
+  if (profile.recentPerformance.length > 7) profile.recentPerformance.shift();
+  saveProfile(profile);
+
+  // Save to history
+  const elapsed = Math.floor((Date.now() - today.startTime) / 1000);
+  const hist = loadHistory();
+  hist.push({
+    date: todayStr(),
+    dayIndex,
+    difficulty: puzzle.difficulty,
+    solved: true,
+    hintsUsed: today.hintsUsed,
+    timeTaken: elapsed,
+    checkAttempts: today.checkAttempts,
+    streak: profile.streak,
+    cleanSolve: today.hintsUsed === 0,
+  });
+  if (hist.length > 30) hist.shift();
+  saveHistory(hist);
+
+  stopTimer();
+  updateHintBtn();
+
+  // Pulse animation
+  document.querySelectorAll('.grid-cell').forEach((cell, i) => {
+    setTimeout(() => cell.classList.add('pulse-solve'), i * 60);
+  });
+
+  setTimeout(() => showSolvedOverlay(), 700);
+}
+
+function showSolvedOverlay() {
+  const elapsed = today.solved && today.startTime
+    ? Math.floor((Date.now() - today.startTime) / 1000)
+    : 0;
+  const hist = loadHistory();
+  const todayEntry = hist[hist.length - 1] || {};
+  const secs = todayEntry.timeTaken || elapsed;
+
+  const mins = Math.floor(secs / 60);
+  const s    = secs % 60;
+  const timeStr = `${mins}:${String(s).padStart(2, '0')}`;
+
+  document.getElementById('solved-cipher').textContent =
+    `The Cipher was ${puzzle.targetSum}`;
+  document.getElementById('stat-time').textContent = timeStr;
+  document.getElementById('stat-hints').textContent =
+    today.hintsUsed === 0 ? '0 — clean!' : String(today.hintsUsed);
+  const diffLabels = { easy: '⚡ Easy', medium: '🔥 Med', hard: '💀 Hard' };
+  document.getElementById('stat-diff').textContent = diffLabels[puzzle.difficulty];
+  document.getElementById('stat-streak').textContent = `🔥 ${profile.streak}`;
+
+  // Community stats (simulated)
+  const diffOff = { easy: 20, medium: 50, hard: 80 };
+  const communityAvg = Math.round(puzzle.targetSum * 4.2 + diffOff[puzzle.difficulty]);
+  const hintRate = puzzle.difficulty === 'hard' ? 68 : puzzle.difficulty === 'medium' ? 38 : 20;
+  const fasterPct = secs < communityAvg ? Math.min(95, Math.round((1 - secs/communityAvg) * 100 + 50)) : Math.max(5, Math.round(50 - (secs - communityAvg) / communityAvg * 50));
+  document.getElementById('community-line').textContent =
+    `You solved faster than ~${fasterPct}% of players • ${hintRate}% of players used at least one hint today`;
+
+  document.getElementById('solved-overlay').classList.add('open');
+}
+
+function showSolvedIfNeeded() {
+  if (solved) stopTimer();
+}
+
+// ═══════════════════════════════════════════════════════
+//  TIMER
+// ═══════════════════════════════════════════════════════
+
+function startTimer() {
+  if (!today.startTime) today.startTime = Date.now();
+  stopTimer();
+  timerInterval = setInterval(() => {}, 1000); // keep alive reference
+}
+
+function stopTimer() {
+  if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+}
+
+// ═══════════════════════════════════════════════════════
+//  SHARE
+// ═══════════════════════════════════════════════════════
+
+function buildShareText() {
+  const hist = loadHistory();
+  const entry = hist[hist.length - 1] || {};
+  const secs  = entry.timeTaken || 0;
+  const mins  = Math.floor(secs / 60);
+  const s     = secs % 60;
+  const timeStr = `${mins}:${String(s).padStart(2,'0')}`;
+  const dateStr = new Date().toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+  const diffLabels = { easy:'⚡ Easy', medium:'🔥 Medium', hard:'💀 Hard' };
+  const diff = diffLabels[puzzle.difficulty] || '';
+
+  // Grid emoji: hint 3 used = full row 💡, hint 2 = one cell 💡, else 🟩
+  const lockedHint3Row = today.hintData.lockedRow;
+  const lockedHint2Cell = today.hintData.lockedCell;
+
+  let rows = '';
+  for (let r = 0; r < 3; r++) {
+    let rowStr = '';
+    for (let c = 0; c < 3; c++) {
+      const i = r * 3 + c;
+      if (lockedHint3Row === r) rowStr += '💡';
+      else if (lockedHint2Cell === i) rowStr += '💡';
+      else rowStr += '🟩';
+    }
+    rows += rowStr + '\n';
+  }
+
+  const url = window.location.href.split('?')[0];
+  return `CIPHER — ${dateStr} ${diff}\nSolved in ${timeStr} • ${today.hintsUsed} hint${today.hintsUsed===1?'':'s'}\n${rows}🔥 ${profile.streak} day streak\nplay at ${url}`;
+}
+
+function copyShare() {
+  const text = buildShareText();
+  navigator.clipboard.writeText(text).then(() => showToast('Copied!')).catch(() => {
+    // Fallback
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    showToast('Copied!');
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+//  STATS SCREEN
+// ═══════════════════════════════════════════════════════
+
+function openStats() {
+  const screen = document.getElementById('stats-screen');
+  screen.classList.add('open');
+  renderStats();
+}
+
+function renderStats() {
+  const hist = loadHistory();
+
+  // Grid cards
+  const solveRate = profile.totalPlayed > 0 ? Math.round(profile.totalSolved / profile.totalPlayed * 100) : 0;
+  const cleanRate = profile.totalSolved > 0 ? Math.round(profile.cleanSolves / profile.totalSolved * 100) : 0;
+
+  document.getElementById('stats-grid').innerHTML = `
+    <div class="stats-card"><div class="label">Played</div><div class="value">${profile.totalPlayed}</div></div>
+    <div class="stats-card"><div class="label">Solved</div><div class="value">${solveRate}%</div></div>
+    <div class="stats-card"><div class="label">Clean solves</div><div class="value">${cleanRate}%</div><div class="sub">0 hints</div></div>
+    <div class="stats-card"><div class="label">Streak</div><div class="value">🔥${profile.streak}</div><div class="sub">Best: ${profile.longestStreak}</div></div>
+  `;
+
+  // Bar chart: last 14 days solve times
+  const recent14 = hist.slice(-14);
+  const maxTime  = Math.max(...recent14.map(e => e.timeTaken || 0), 60);
+  const barChart = document.getElementById('bar-chart');
+  barChart.innerHTML = '';
+
+  const days14 = Array.from({length: 14}, (_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() - (13 - i));
+    const ds = d.toISOString().slice(0,10);
+    return recent14.find(e => e.date === ds) || null;
+  });
+
+  days14.forEach((entry, i) => {
+    const col = document.createElement('div');
+    col.className = 'bar-col';
+    const fill = document.createElement('div');
+    fill.className = 'bar-fill' + (entry ? '' : ' no-data');
+    const pct = entry ? Math.round((entry.timeTaken / maxTime) * 72) : 4;
+    fill.style.height = pct + 'px';
+    const label = document.createElement('div');
+    label.className = 'bar-label';
+    const d = new Date(); d.setDate(d.getDate() - (13 - i));
+    label.textContent = d.toLocaleDateString('en-US', { weekday: 'narrow' });
+    col.appendChild(fill);
+    col.appendChild(label);
+    barChart.appendChild(col);
+  });
+
+  // Hint breakdown
+  const total = hist.length;
+  const noHint = hist.filter(e => e.hintsUsed === 0).length;
+  const hint1  = hist.filter(e => e.hintsUsed === 1).length;
+  const hint2  = hist.filter(e => e.hintsUsed === 2).length;
+  const hint3  = hist.filter(e => e.hintsUsed >= 3).length;
+
+  function pct(n) { return total > 0 ? Math.round(n/total*100) : 0; }
+
+  document.getElementById('hint-breakdown').innerHTML = `
+    <div class="hint-row"><span style="min-width:80px">No hints</span><div class="hint-row-bar"><div class="hint-row-fill" style="width:${pct(noHint)}%"></div></div><span class="hint-row-pct">${pct(noHint)}%</span></div>
+    <div class="hint-row"><span style="min-width:80px">Hint 1</span><div class="hint-row-bar"><div class="hint-row-fill" style="width:${pct(hint1)}%"></div></div><span class="hint-row-pct">${pct(hint1)}%</span></div>
+    <div class="hint-row"><span style="min-width:80px">Hint 2</span><div class="hint-row-bar"><div class="hint-row-fill" style="width:${pct(hint2)}%"></div></div><span class="hint-row-pct">${pct(hint2)}%</span></div>
+    <div class="hint-row"><span style="min-width:80px">Hint 3</span><div class="hint-row-bar"><div class="hint-row-fill" style="width:${pct(hint3)}%"></div></div><span class="hint-row-pct">${pct(hint3)}%</span></div>
+  `;
+}
+
+// ═══════════════════════════════════════════════════════
+//  UTILS
+// ═══════════════════════════════════════════════════════
+
+function setStatus(msg) {
+  const el = document.getElementById('status-msg');
+  el.textContent = msg;
+  el.style.opacity = msg ? '1' : '0';
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+function persistGridState() {
+  today.gridState = grid.slice();
+  saveToday(today);
+}
+
+// ═══════════════════════════════════════════════════════
+//  EVENT WIRING
+// ═══════════════════════════════════════════════════════
+
+document.getElementById('check-btn').addEventListener('click', checkGrid);
+
+document.getElementById('reset-btn').addEventListener('click', () => {
+  if (solved) return;
+  // Return locked cells to their positions, clear non-locked
+  for (let i = 0; i < 9; i++) {
+    if (!lockedCells[i]) grid[i] = null;
+  }
+  // Rebuild tray: all puzzle numbers not locked in grid
+  const lockedVals = grid.filter((v,i) => v !== null && lockedCells[i]);
+  const lockedSet = new Set(lockedVals);
+  let li2 = 0;
+  trayNums = puzzle.numbers.map(n => {
+    if (lockedSet.has(n)) { lockedSet.delete(n); return null; } // consumed by grid
+    return n;
+  });
+  persistGridState();
+  renderGrid();
+  renderTray();
+  clearLineFeedback();
+});
+
+document.getElementById('hint-btn').addEventListener('click', openHintSheet);
+document.getElementById('hint-confirm-btn').addEventListener('click', applyHint);
+document.getElementById('hint-cancel-btn').addEventListener('click', closeHintSheet);
+document.getElementById('sheet-overlay').addEventListener('click', closeHintSheet);
+
+document.getElementById('share-btn').addEventListener('click', copyShare);
+document.getElementById('close-solved-btn').addEventListener('click', () => {
+  document.getElementById('solved-overlay').classList.remove('open');
+});
+
+document.getElementById('open-stats-btn').addEventListener('click', openStats);
+document.getElementById('close-stats-btn').addEventListener('click', () => {
+  document.getElementById('stats-screen').classList.remove('open');
+});
+
+document.getElementById('howto-btn').addEventListener('click', () => {
+  document.getElementById('howto-overlay').classList.remove('open');
+  STORE.set('cipher_howto_seen', true);
+});
+
+// Keyboard: Escape closes overlays
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    closeHintSheet();
+    document.getElementById('solved-overlay').classList.remove('open');
+    document.getElementById('stats-screen').classList.remove('open');
+  }
+});
+
+// ═══════════════════════════════════════════════════════
+//  BOOT
+// ═══════════════════════════════════════════════════════
+
+setupTouchDrag();
+setupTrayDropTarget();
+init();
+</script>
+</body>
+</html>
