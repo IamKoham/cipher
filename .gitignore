@@ -2,3 +2,7 @@ node_modules/
 package.json
 package-lock.json
 _source.html
+_source_legacy_personalized.html
+context.md
+SIGNAL_game_spec.md
+*.png
