@@ -1,8 +1,8 @@
-const CACHE = 'cipher-v1';
+const CACHE = 'cipher-v2';
 
 self.addEventListener('install', e => {
   self.skipWaiting();
-  e.waitUntil(caches.open(CACHE).then(c => c.add('/cipher/')));
+  e.waitUntil(caches.open(CACHE).then(c => c.add('/')));
 });
 
 self.addEventListener('activate', e => {
