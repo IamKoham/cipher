@@ -6,3 +6,5 @@ _source_legacy_personalized.html
 context.md
 SIGNAL_game_spec.md
 *.png
+!og.png
+!icon-*.png
